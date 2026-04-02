@@ -119,7 +119,11 @@ def load_mmeb_dataset(model_args, data_args, training_args, *args, **kwargs):
     dataset_name = kwargs.get("dataset_name", DATASET_PARSER_NAME)
     subset_name = kwargs.get("subset_name")
     dataset_split = kwargs.get("dataset_split", "original")
-    dataset = load_dataset(dataset_name, subset_name, split=f"{dataset_split}")
+    dataset_path = kwargs.get("dataset_path")
+    if dataset_path:
+        dataset = load_dataset("parquet", data_files=dataset_path, split="train")
+    else:
+        dataset = load_dataset(dataset_name, subset_name, split=f"{dataset_split}")
     column_names = dataset.column_names
     num_sample_per_subset = kwargs.get("num_sample_per_subset", getattr(data_args, "num_sample_per_subset", None))
     if num_sample_per_subset is not None and num_sample_per_subset < dataset.num_rows:

@@ -19,14 +19,16 @@ popd
 
 # 2.2 Download LLaVA-Hound video data
 sudo apt-get install -y git-lfs
-git clone https://huggingface.co/datasets/ShareGPTVideo/train_video_and_instruction/ video
-pushd video/
+# Only the 300k split is used by the checked-in public training configs.
+# Clone without auto-downloading all LFS objects, then pull just the paths we need.
+GIT_LFS_SKIP_SMUDGE=1 git clone https://huggingface.co/datasets/ShareGPTVideo/train_video_and_instruction/
+pushd train_video_and_instruction/
+
+git sparse-checkout init --cone
+git sparse-checkout set train_300k video_instruction/train/sft
+git lfs pull --include="train_300k/**,video_instruction/train/sft/**"
 
 pushd train_300k/
-for f in *.tar.gz; do tar -xzvf "$f"; done
-popd
-
-pushd train_600k/
 for f in *.tar.gz; do tar -xzvf "$f"; done
 popd
 
