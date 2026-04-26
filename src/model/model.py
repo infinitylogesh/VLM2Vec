@@ -7,7 +7,7 @@ from peft import LoraConfig, get_peft_model, PeftModel
 from src.model.processor import QWEN2_5_VL_TOKENSELECTION
 from src.arguments import ModelArguments, TrainingArguments
 from src.model.processor import LLAVA_NEXT, QWEN2_VL, PHI3V, get_backbone_name, print_master, QWEN2_5_VL, \
-    backbone2model, QWEN2_VL_TOKENSELECTION, QWEN2_5_VL_TOKENSELECTION, E5_V
+    backbone2model, QWEN2_VL_TOKENSELECTION, QWEN2_5_VL_TOKENSELECTION, E5_V, QWEN3_5
 
 from src.arguments import ModelArguments
 from src.model.processor import LLAVA_NEXT, QWEN2_VL, PHI3V, get_backbone_name, print_master, QWEN2_5_VL, INTERNVIDEO2, \
@@ -18,6 +18,7 @@ from src.model.baseline_backbone.lamra.lamra_inference import LamRAQwen2VL
 from src.model.baseline_backbone.lamra.lamra_qwen25_inference import LamRAQwen25VL
 from src.model.baseline_backbone.phi3_v.modeling_phi3_v import Phi3VForCausalLM
 from src.model.baseline_backbone.llava_next import LlavaNextForConditionalGeneration
+from transformers import Qwen3_5ForConditionalGeneration
 
 from transformers import modeling_utils
 if not hasattr(modeling_utils, "ALL_PARALLEL_STYLES") or modeling_utils.ALL_PARALLEL_STYLES is None:
@@ -155,6 +156,14 @@ class MMEBModel(nn.Module):
                 config=config,
                 torch_dtype=torch.bfloat16,
                 low_cpu_mem_usage=True,
+            )
+        # TODO: Add Qwen3.5 support
+        elif model_backbone == QWEN3_5:
+            config._attn_implementation = "flash_attention_2"
+            config.padding_side = "left"
+            config.use_cache = False
+            base_model = backbone2model[model_backbone].from_pretrained(
+                model_args.model_name, config=config, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True
             )
         elif model_backbone in [QWEN2_VL_TOKENSELECTION, QWEN2_5_VL_TOKENSELECTION]:
             config._attn_implementation = "flash_attention_2"

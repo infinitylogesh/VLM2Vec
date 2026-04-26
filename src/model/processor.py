@@ -21,7 +21,7 @@ from src.model.baseline_backbone.internvideo2.modeling_internvideo2 import Inter
 from src.model.vlm_backbone.qwen2_5_vl import Qwen2_5_VLForConditionalGeneration
 from src.model.vlm_backbone.qwen2_5_vl_tokenselection import \
     Qwen2_5_VLForConditionalGeneration as Qwen2_5_VL_TokenSelectionForConditionalGeneration
-
+from transformers import Qwen3_5ForConditionalGeneration, Qwen3_5Processor
 
 PHI_IMAGE_TOKEN_MAX_INPUT_ID = int(1e9)
 LLAVA_IMAGE_TOKEN_ID = 32000
@@ -31,8 +31,10 @@ LLAVA_NEXT = 'llava_next'
 QWEN2_VL = 'qwen2_vl'
 QWEN2_VL_TOKENSELECTION = 'qwen2_vl'
 QWEN2_5_VL = 'qwen2_5_vl'
+QWEN3_5 = 'qwen3_5'
 QWEN2_VL_TOKENSELECTION = 'qwen2_vl_tokenselection'
 QWEN2_5_VL_TOKENSELECTION = 'qwen2_5_vl_tokenselection'
+QWEN3_5_TOKENSELECTION = 'qwen3_5_tokenselection'
 INTERNVIDEO2 = 'internvideo2'
 GME = 'gme'  # QWEN2-VL
 LamRA = 'lamra'  # QWEN2-VL
@@ -45,6 +47,8 @@ MODEL2BACKBONE = {  # keys are from hf_config.model_type or manually added if no
     'qwen2_vl': QWEN2_VL,
     'qwen2_vl_tokenselection': QWEN2_VL,
     'qwen2_5_vl': QWEN2_5_VL,
+    'qwen3_5': QWEN3_5,
+    'qwen3_5_tokenselection': QWEN3_5_TOKENSELECTION,
     'qwen2_vl_tokenselection': QWEN2_VL_TOKENSELECTION,
     'qwen2_5_vl_tokenselection': QWEN2_5_VL_TOKENSELECTION,
     'internvideo2': INTERNVIDEO2,
@@ -63,6 +67,8 @@ VLM_IMAGE_TOKENS = {
     QWEN2_5_VL: "<|image_pad|>",
     QWEN2_VL_TOKENSELECTION: "<|image_pad|>",
     QWEN2_5_VL_TOKENSELECTION: "<|image_pad|>",
+    QWEN3_5: "<|image_pad|>",
+    QWEN3_5_TOKENSELECTION: "<|image_pad|>",
     GME: "<|image_pad|>",
     LamRA: "<|image_pad|>",
     LamRA_QWEN2_5: "<|image_pad|>",
@@ -77,6 +83,8 @@ VLM_VIDEO_TOKENS = {
     QWEN2_5_VL: "<|video_pad|>",
     QWEN2_VL_TOKENSELECTION: "<|video_pad|>",
     QWEN2_5_VL_TOKENSELECTION: "<|video_pad|>",
+    QWEN3_5: "<|video_pad|>",
+    QWEN3_5_TOKENSELECTION: "<|video_pad|>",
     GME: "<|video_pad|>",
     LamRA: "<|video_pad|>",
     LamRA_QWEN2_5: "<|video_pad|>",
@@ -94,6 +102,9 @@ backbone2model = {
     QWEN2_5_VL_TOKENSELECTION: Qwen2_5_VL_TokenSelectionForConditionalGeneration,
     INTERNVIDEO2: InternVideo2_Stage2,
     E5_V: LlavaNextForConditionalGeneration,
+    QWEN3_5: Qwen3_5ForConditionalGeneration,
+    QWEN3_5_TOKENSELECTION: Qwen3_5ForConditionalGeneration,
+    QWEN3_5: Qwen3_5ForConditionalGeneration,
 }
 
 
@@ -372,6 +383,82 @@ def Qwen2_VL_process_fn(model_inputs: dict, processor: Qwen2VLProcessor, max_len
     inputs['video_grid_thw'] = video_grid_thw
 
     return inputs
+# TODO: complete Qwen3.5 support
+def Qwen3_5_process_fn(model_inputs: dict, processor: Qwen3_5Processor, max_length=None):
+    # TODO: set separate max_len for text/visual inputs, currently max_length is only applied to text-only data
+    input_ids, pixel_values, image_grid_thw, pixel_values_videos, video_grid_thw = [], [], [], [], []
+    texts, visual_inputs = model_inputs['text'], model_inputs['images']
+    vlm_image_token, vlm_video_token = VLM_IMAGE_TOKENS[QWEN3_5], VLM_VIDEO_TOKENS[QWEN3_5]
+    mm_token_type_ids = []
+    
+    # 1. iterate each pair and process, since processors do not support processing for mixed batch (contains data w/ and w/o visual inputs)
+    for text, visual_input in zip(texts, visual_inputs):
+        if not visual_input or (type(visual_input)==list and any(i is None for i in visual_input)):
+            # if text inputs only (all images must be valid)
+            inputs = processor(text=[text], images=None, return_tensors="np", max_length=max_length, truncation=True)
+            input_id = inputs["input_ids"].squeeze().tolist()
+            if isinstance(input_id, int):
+                # in case of empty string, only BOS is included
+                input_id = [input_id]
+            input_ids.append(input_id)
+            pixel_values.append(None)
+            image_grid_thw.append(None)
+            pixel_values_videos.append(None)
+            video_grid_thw.append(None)
+        else:
+            try:
+                if vlm_image_token in text:
+                    if isinstance(visual_input, PIL.Image.Image):
+                        # images is a single image
+                        visual_input = [visual_input]
+                    for iid, image in enumerate(visual_input):
+                        # rare case in MMEB eval: resize to 28*28 if either w or h is smaller than 28
+                        if image.size[0] < 28 or image.size[1] < 28:
+                            image = image.resize((56, 56))
+                            visual_input[iid] = image
+                    inputs = processor(text=[text], images=visual_input, return_tensors="np", max_length=max_length, truncation=(max_length is not None), input_data_format=ChannelDimension.LAST)
+                elif vlm_video_token in text:
+                    # TODO: check text/video data validity
+                    inputs = processor(text=[text], videos=[visual_input], return_tensors="np", max_length=max_length, truncation=(max_length is not None), input_data_format=ChannelDimension.LAST)
+                else:
+                    raise NotImplementedError(f"No visual token found ({vlm_image_token} or {vlm_video_token}) in the text: {text}")
+            except Exception as e:
+                for i in visual_input:
+                    print(i.filename)
+                raise e
+            input_ids.append(inputs["input_ids"].squeeze().tolist())
+            if 'pixel_values' in inputs:
+                pixel_values.append(inputs['pixel_values'])
+                image_grid_thw.append(inputs['image_grid_thw'])
+                pixel_values_videos.append(None)
+                video_grid_thw.append(None)
+            else:
+                pixel_values.append(None)
+                image_grid_thw.append(None)
+                pixel_values_videos.append(inputs['pixel_values_videos'])
+                video_grid_thw.append(inputs['video_grid_thw'])
+
+    # 2. padding inputs
+    batch_encoding = processor.tokenizer.pad({'input_ids': input_ids}, return_tensors="pt")
+    input_ids, attention_mask = batch_encoding['input_ids'], batch_encoding['attention_mask']
+    # manually enforce long type due to:
+    # (1) [rank7]: RuntimeError: Expected tensor for argument #1 'indices' to have one of the following scalar types: Long, Int; but got torch.cuda.FloatTensor instead (while checking arguments for embedding)
+    # (2) [rank7]:   File "/fsx/home/ruimeng/project/VLM2Vec/src/model.py", line 45, in _pooling
+    #     [rank7]:     reps = last_hidden_state[
+    #     [rank7]: IndexError: tensors used as indices must be long, int, byte or bool tensors
+    inputs = {
+        'input_ids': input_ids.long(),
+        'attention_mask': attention_mask.long(), 
+        'texts': texts,
+        'images': visual_inputs,
+    }
+    inputs['pixel_values'] = pixel_values
+    inputs['image_grid_thw'] = image_grid_thw
+    inputs['pixel_values_videos'] = pixel_values_videos
+    inputs['video_grid_thw'] = video_grid_thw
+
+    return inputs
+
 
 def Gme_process_fn(model_inputs: dict, processor: Qwen2VLProcessor, max_length=None):
     inputs = {
