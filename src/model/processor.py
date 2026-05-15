@@ -17,11 +17,11 @@ from src.model.vlm_backbone.qwen2_vl import Qwen2VLForConditionalGeneration, Qwe
 from src.model.vlm_backbone.qwen2_vl_tokenselection import \
     Qwen2VLForConditionalGeneration as Qwen2VLTokenSelectionForConditionalGeneration, \
     Qwen2VLProcessor as Qwen2VLTokenSelectionProcessor
-from src.model.baseline_backbone.internvideo2.modeling_internvideo2 import InternVideo2_Stage2
+# from src.model.baseline_backbone.internvideo2.modeling_internvideo2 import InternVideo2_Stage2
 from src.model.vlm_backbone.qwen2_5_vl import Qwen2_5_VLForConditionalGeneration
 from src.model.vlm_backbone.qwen2_5_vl_tokenselection import \
     Qwen2_5_VLForConditionalGeneration as Qwen2_5_VL_TokenSelectionForConditionalGeneration
-from transformers import Qwen3_5ForConditionalGeneration, Qwen3_5Processor
+from transformers import Qwen3_5ForConditionalGeneration, AutoProcessor
 
 PHI_IMAGE_TOKEN_MAX_INPUT_ID = int(1e9)
 LLAVA_IMAGE_TOKEN_ID = 32000
@@ -100,7 +100,7 @@ backbone2model = {
     QWEN2_5_VL: Qwen2_5_VLForConditionalGeneration,
     QWEN2_VL_TOKENSELECTION: Qwen2VLTokenSelectionForConditionalGeneration,
     QWEN2_5_VL_TOKENSELECTION: Qwen2_5_VL_TokenSelectionForConditionalGeneration,
-    INTERNVIDEO2: InternVideo2_Stage2,
+    # INTERNVIDEO2: InternVideo2_Stage2,
     E5_V: LlavaNextForConditionalGeneration,
     QWEN3_5: Qwen3_5ForConditionalGeneration,
     QWEN3_5_TOKENSELECTION: Qwen3_5ForConditionalGeneration
@@ -389,7 +389,7 @@ def Qwen2_VL_process_fn(model_inputs: dict, processor: Qwen2VLProcessor, max_len
 
     return inputs
 # TODO: complete Qwen3.5 support
-def Qwen3_5_process_fn(model_inputs: dict, processor: Qwen3_5Processor, max_length=None):
+def Qwen3_5_process_fn(model_inputs: dict, processor: AutoProcessor, max_length=None):
     # TODO: set separate max_len for text/visual inputs, currently max_length is only applied to text-only data
     input_ids, pixel_values, image_grid_thw, pixel_values_videos, video_grid_thw = [], [], [], [], []
     texts, visual_inputs = model_inputs['text'], model_inputs['images']
@@ -772,10 +772,11 @@ process_vlm_inputs_fns = {
     QWEN2_5_VL: Qwen2_VL_process_fn,
     QWEN2_VL_TOKENSELECTION: Qwen2_VL_TokenSelection_process_fn,
     QWEN2_5_VL_TOKENSELECTION: Qwen2_VL_TokenSelection_process_fn,
-    INTERNVIDEO2: InternVideo2_process_fn,
+    # INTERNVIDEO2: InternVideo2_process_fn,
     GME: Gme_process_fn,
     LamRA: Gme_process_fn,
     LamRA_QWEN2_5: Gme_process_fn,
     COLPALI: ColPali_process_fn,
     E5_V: Llava_NEXT_process_fn,
+    QWEN3_5: Qwen3_5_process_fn,
 }

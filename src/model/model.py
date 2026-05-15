@@ -13,9 +13,9 @@ from src.arguments import ModelArguments
 from src.model.processor import LLAVA_NEXT, QWEN2_VL, PHI3V, get_backbone_name, print_master, QWEN2_5_VL, INTERNVIDEO2, \
     QWEN2_VL_TOKENSELECTION, backbone2model, GME, VLM_IMAGE_TOKENS, LamRA, LamRA_QWEN2_5, COLPALI
 from src.model.baseline_backbone.colpali import ColPali
-from src.model.baseline_backbone.gme.gme_inference import GmeQwen2VL
-from src.model.baseline_backbone.lamra.lamra_inference import LamRAQwen2VL
-from src.model.baseline_backbone.lamra.lamra_qwen25_inference import LamRAQwen25VL
+# from src.model.baseline_backbone.gme.gme_inference import GmeQwen2VL
+# from src.model.baseline_backbone.lamra.lamra_inference import LamRAQwen2VL
+# from src.model.baseline_backbone.lamra.lamra_qwen25_inference import LamRAQwen25VL
 from src.model.baseline_backbone.phi3_v.modeling_phi3_v import Phi3VForCausalLM
 from src.model.baseline_backbone.llava_next import LlavaNextForConditionalGeneration
 from transformers import Qwen3_5ForConditionalGeneration
@@ -157,9 +157,10 @@ class MMEBModel(nn.Module):
                 torch_dtype=torch.bfloat16,
                 low_cpu_mem_usage=True,
             )
-        # TODO: Add Qwen3.5 support
+        # Qwen3.5 debug path should not require flash-attn to be installed.
         elif model_backbone == QWEN3_5:
-            config._attn_implementation = "flash_attention_2"
+            # TODO: Switch to flash-attn once it is supported.
+            config._attn_implementation = "eager" 
             config.padding_side = "left"
             config.use_cache = False
             base_model = backbone2model[model_backbone].from_pretrained(
@@ -252,15 +253,15 @@ class MMEBModel(nn.Module):
                                                 trust_remote_code=True)
             base_model = backbone2model[model_args.model_backbone].from_pretrained("src/model/vlm_backbone/internvideo2/", config=config,
                                                                                    trust_remote_code=True)
-        elif model_args.model_backbone == GME:
-            base_model = GmeQwen2VL(model_args.model_name, processor=kwargs['processor'])
-            setattr(base_model, 'config', config)
-        elif model_args.model_backbone == LamRA:
-            base_model = LamRAQwen2VL(model_args.model_name)
-            setattr(base_model, 'config', config)
-        elif model_args.model_backbone == LamRA_QWEN2_5:
-            base_model = LamRAQwen25VL(model_args.model_name)
-            setattr(base_model, 'config', config)
+        # elif model_args.model_backbone == GME:
+        #     base_model = GmeQwen2VL(model_args.model_name, processor=kwargs['processor'])
+        #     setattr(base_model, 'config', config)
+        # elif model_args.model_backbone == LamRA:
+        #     base_model = LamRAQwen2VL(model_args.model_name)
+        #     setattr(base_model, 'config', config)
+        # elif model_args.model_backbone == LamRA_QWEN2_5:
+        #     base_model = LamRAQwen25VL(model_args.model_name)
+        #     setattr(base_model, 'config', config)
         elif model_args.model_backbone == COLPALI:
             base_model = ColPali.from_pretrained(model_args.model_name)
             setattr(base_model, 'config', config)

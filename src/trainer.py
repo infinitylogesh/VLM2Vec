@@ -202,7 +202,7 @@ class MMEBTrainer(Trainer):
                 # May be slightly incorrect if the last batch in the training dataloader has a smaller size but it's
                 # the best we can do.
                 num_train_samples = args.max_steps * total_train_batch_size
-                if args.include_tokens_per_second:
+                if getattr(args, "include_tokens_per_second", False):
                     num_train_tokens = (
                         self.num_tokens(train_dataloader, args.max_steps) * args.gradient_accumulation_steps
                     )
@@ -210,7 +210,7 @@ class MMEBTrainer(Trainer):
                 max_steps = math.ceil(args.num_train_epochs * num_update_steps_per_epoch)
                 num_train_epochs = math.ceil(args.num_train_epochs)
                 num_train_samples = self.num_examples(train_dataloader) * args.num_train_epochs
-                if args.include_tokens_per_second:
+                if getattr(args, "include_tokens_per_second", False):
                     num_train_tokens = self.num_tokens(train_dataloader) * args.num_train_epochs
         elif args.max_steps > 0:  # Rely on max_steps when dataloader does not have a working size
             max_steps = args.max_steps
@@ -219,7 +219,7 @@ class MMEBTrainer(Trainer):
             num_update_steps_per_epoch = max_steps
             num_examples = total_train_batch_size * args.max_steps
             num_train_samples = args.max_steps * total_train_batch_size
-            if args.include_tokens_per_second:
+            if getattr(args, "include_tokens_per_second", False):
                 num_train_tokens = self.num_tokens(train_dataloader, args.max_steps) * args.gradient_accumulation_steps
         else:
             raise ValueError(
@@ -282,7 +282,7 @@ class MMEBTrainer(Trainer):
         if use_accelerator_prepare:
             self.model.train()
             if hasattr(self.lr_scheduler, "step"):
-                if self.use_apex:
+                if getattr(self, "use_apex", False):
                     model = self.accelerator.prepare(self.model)
                 else:
                     model, self.optimizer = self.accelerator.prepare(self.model, self.optimizer)
@@ -390,7 +390,7 @@ class MMEBTrainer(Trainer):
                 epoch_dataloader.dataset.set_epoch(epoch)
 
             # Reset the past mems state at the beginning of each epoch if necessary.
-            if args.past_index >= 0:
+            if getattr(args, "past_index", -1) >= 0:
                 self._past = None
 
             steps_in_epoch = (
@@ -446,7 +446,7 @@ class MMEBTrainer(Trainer):
                     else:
                         self.accelerator.gradient_state._set_sync_gradients(True)
 
-                    if self.args.include_num_input_tokens_seen:
+                    if getattr(self.args, "include_num_input_tokens_seen", "no") != "no":
                         main_input_name = getattr(self.model, "main_input_name", "input_ids")
                         if main_input_name not in inputs:
                             logger.warning(
@@ -510,7 +510,7 @@ class MMEBTrainer(Trainer):
                         if args.max_grad_norm is not None and args.max_grad_norm > 0:
                             # deepspeed does its own clipping
 
-                            if self.use_apex:
+                            if getattr(self, "use_apex", False):
                                 # Revert to normal clipping otherwise, handling Apex or full precision
                                 _grad_norm = torch.nn.utils.clip_grad_norm_(
                                     amp.master_params(self.optimizer),
@@ -579,7 +579,7 @@ class MMEBTrainer(Trainer):
             if self.control.should_training_stop:
                 break
 
-        if args.past_index and hasattr(self, "_past"):
+        if getattr(args, "past_index", -1) >= 0 and hasattr(self, "_past"):
             # Clean the state at the end of training
             delattr(self, "_past")
 

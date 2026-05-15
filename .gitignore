@@ -1,7 +1,8 @@
 experiments_private/
 experiments/darth/
 .idea/
-.vscode/
+.vscode/*
+!.vscode/launch.json
 .myenv/
 __pycache__/
 .DS_Store

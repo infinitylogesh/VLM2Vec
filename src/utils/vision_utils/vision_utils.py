@@ -11,7 +11,10 @@ import torchvision
 import torchvision.transforms as transforms
 from PIL import Image
 from torchvision.datasets.folder import IMG_EXTENSIONS, pil_loader
-from torchvision.io import write_video
+try:
+    from torchvision.io import write_video
+except ImportError:
+    write_video = None
 from torchvision.utils import save_image
 
 from src.utils.vision_utils import video_transforms
@@ -182,6 +185,8 @@ def save_sample(x, fps=8, save_path=None, normalize=True, value_range=(-1, 1), f
             x.clamp_(min=low, max=high)
             x.sub_(low).div_(max(high - low, 1e-5))
         x = x.mul(255).add_(0.5).clamp_(0, 255).permute(1, 2, 3, 0).to("cpu", torch.uint8)
+        if write_video is None:
+            raise RuntimeError("torchvision.io.write_video is unavailable in this torchvision build")
         write_video(save_path, x, fps=fps, video_codec="h264")
     print(f"Saved to {save_path}")
     return save_path
