@@ -160,7 +160,7 @@ class MMEBModel(nn.Module):
         # Qwen3.5 debug path should not require flash-attn to be installed.
         elif model_backbone == QWEN3_5:
             # TODO: Switch to flash-attn once it is supported.
-            config._attn_implementation = "eager" 
+            config._attn_implementation = "flash_attention_2" # "eager" 
             config.padding_side = "left"
             config.use_cache = False
             base_model = backbone2model[model_backbone].from_pretrained(
