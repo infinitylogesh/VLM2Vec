@@ -103,8 +103,7 @@ backbone2model = {
     INTERNVIDEO2: InternVideo2_Stage2,
     E5_V: LlavaNextForConditionalGeneration,
     QWEN3_5: Qwen3_5ForConditionalGeneration,
-    QWEN3_5_TOKENSELECTION: Qwen3_5ForConditionalGeneration,
-    QWEN3_5: Qwen3_5ForConditionalGeneration,
+    QWEN3_5_TOKENSELECTION: Qwen3_5ForConditionalGeneration
 }
 
 
@@ -194,6 +193,12 @@ def load_processor(model_args, data_args=None):
     elif model_args.model_backbone == COLPALI:
         from transformers import AutoProcessor
         processor = ColPaliProcessor.from_pretrained(model_args.model_name)
+    elif model_args.model_backbone == QWEN3_5:
+        from transformers import AutoProcessor
+        processor = AutoProcessor.from_pretrained(
+            model_args.processor_name if model_args.processor_name else model_args.model_name,
+            trust_remote_code=True,
+        )
     else:
         from transformers import AutoProcessor
         processor = AutoProcessor.from_pretrained(

@@ -21,7 +21,7 @@ import torch
 import torch.utils.checkpoint
 from torch import nn
 
-from transformers.cache_utils import Cache, HybridCache, StaticCache
+from transformers.cache_utils import Cache, StaticCache
 from transformers.generation import GenerationMixin
 from transformers.modeling_utils import PreTrainedModel
 from transformers.utils import (
@@ -357,8 +357,8 @@ class PaliGemmaForConditionalGeneration(PaliGemmaPreTrainedModel, GenerationMixi
         sequence_length = input_ids.shape[1] if input_ids is not None else inputs_embeds.shape[1]
         if using_static_cache:
             target_length = past_key_values.get_max_cache_shape()
-        elif isinstance(past_key_values, HybridCache):
-            target_length = past_key_values.get_max_cache_shape()
+        # elif isinstance(past_key_values, HybridCache):
+        #     target_length = past_key_values.get_max_cache_shape()
         else:
             target_length = (
                 attention_mask.shape[-1]
