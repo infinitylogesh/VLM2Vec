@@ -31,6 +31,8 @@ from transformers.trainer_utils import (
     TrainOutput,
     has_length,
     speed_metrics, seed_worker,
+    sort_checkpoints,
+    compare_trainer_and_checkpoint_args,
 )
 
 from transformers.trainer_pt_utils import (
@@ -106,11 +108,11 @@ class MMEBTrainer(Trainer):
         assert all(k.startswith(prefix) for k in state_dict.keys()), list(state_dict.keys())
         state_dict = {k[len(prefix):]: v for k, v in state_dict.items()}
         self.model.encoder.save_pretrained(
-            output_dir, state_dict=state_dict, safe_serialization=self.args.save_safetensors
+            output_dir, state_dict=state_dict
         )
 
-        if self.tokenizer is not None:
-            self.tokenizer.save_pretrained(output_dir)
+        if self.processing_class is not None:
+            self.processing_class.save_pretrained(output_dir)
 
         torch.save(self.args, os.path.join(output_dir, TRAINING_ARGS_NAME))
 
@@ -340,7 +342,7 @@ class MMEBTrainer(Trainer):
             os.path.join(resume_from_checkpoint, TRAINER_STATE_NAME)
         ):
             self.state = TrainerState.load_from_json(os.path.join(resume_from_checkpoint, TRAINER_STATE_NAME))
-            self.compare_trainer_and_checkpoint_args(self.args, self.state)
+            compare_trainer_and_checkpoint_args(self.args, self.state)
             self._load_callback_state()
             epochs_trained = int(self.state.global_step // num_update_steps_per_epoch)
             if not args.ignore_data_skip:
@@ -616,7 +618,7 @@ class MMEBTrainer(Trainer):
         self.log(metrics)
 
         run_dir = self._get_output_dir(trial)
-        checkpoints_sorted = self._sorted_checkpoints(use_mtime=False, output_dir=run_dir)
+        checkpoints_sorted = sort_checkpoints(output_dir=run_dir, best_model_checkpoint=self.state.best_model_checkpoint)
 
         # Delete the last checkpoint when save_total_limit=1 if it's different from the best checkpoint and process allowed to save.
         if self.args.should_save and self.state.best_model_checkpoint is not None and self.args.save_total_limit == 1:
@@ -682,12 +684,9 @@ class GradCacheLateProcessTrainer(MMEBTrainer):
         targets = batch_to_device(targets, device)
 
         _distributed = dist.is_initialized() and dist.get_world_size() > 1
-        if _distributed:
-            gc_queries, gc_targets = {'qry': queries}, {'tgt': targets}
-            self.gc.models = [model, model]
-            loss = self.gc(gc_queries, gc_targets, no_sync_except_last=True)
-        else:
-            loss = model(queries, targets)
+        gc_queries, gc_targets = {'qry': queries}, {'tgt': targets}
+        self.gc.models = [model, model]
+        loss = self.gc(gc_queries, gc_targets, no_sync_except_last=_distributed)
         return loss / self._dist_loss_scale_factor
 
 
@@ -701,11 +700,11 @@ class GradCacheLateProcessTrainer(MMEBTrainer):
         assert all(k.startswith(prefix) for k in state_dict.keys()), list(state_dict.keys())
         state_dict = {k[len(prefix):]: v for k, v in state_dict.items()}
         self.model.encoder.save_pretrained(
-            output_dir, state_dict=state_dict, safe_serialization=self.args.save_safetensors
+            output_dir, state_dict=state_dict
         )
 
-        if self.tokenizer is not None:
-            self.tokenizer.save_pretrained(output_dir)
+        if self.processing_class is not None:
+            self.processing_class.save_pretrained(output_dir)
 
         torch.save(self.args, os.path.join(output_dir, TRAINING_ARGS_NAME))
         self.model.encoder.config.to_json_file(os.path.join(output_dir, 'config.json'))
