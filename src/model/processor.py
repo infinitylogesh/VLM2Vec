@@ -29,7 +29,6 @@ LLAVA_IMAGE_TOKEN_ID = 32000
 PHI3V = 'phi3_v'
 LLAVA_NEXT = 'llava_next'
 QWEN2_VL = 'qwen2_vl'
-QWEN2_VL_TOKENSELECTION = 'qwen2_vl'
 QWEN2_5_VL = 'qwen2_5_vl'
 QWEN3_5 = 'qwen3_5'
 QWEN2_VL_TOKENSELECTION = 'qwen2_vl_tokenselection'
@@ -48,7 +47,6 @@ MODEL2BACKBONE = {  # keys are from hf_config.model_type or manually added if no
     'qwen2_vl_tokenselection': QWEN2_VL,
     'qwen2_5_vl': QWEN2_5_VL,
     'qwen3_5': QWEN3_5,
-    'qwen3_5_tokenselection': QWEN3_5_TOKENSELECTION,
     'qwen2_vl_tokenselection': QWEN2_VL_TOKENSELECTION,
     'qwen2_5_vl_tokenselection': QWEN2_5_VL_TOKENSELECTION,
     'internvideo2': INTERNVIDEO2,
@@ -388,14 +386,13 @@ def Qwen2_VL_process_fn(model_inputs: dict, processor: Qwen2VLProcessor, max_len
     inputs['video_grid_thw'] = video_grid_thw
 
     return inputs
-# TODO: complete Qwen3.5 support
 def Qwen3_5_process_fn(model_inputs: dict, processor: AutoProcessor, max_length=None):
     # TODO: set separate max_len for text/visual inputs, currently max_length is only applied to text-only data
     input_ids, pixel_values, image_grid_thw, pixel_values_videos, video_grid_thw = [], [], [], [], []
     texts, visual_inputs = model_inputs['text'], model_inputs['images']
     vlm_image_token, vlm_video_token = VLM_IMAGE_TOKENS[QWEN3_5], VLM_VIDEO_TOKENS[QWEN3_5]
-    mm_token_type_ids = []
-    
+    per_example_mm_token_type_ids = []
+
     # 1. iterate each pair and process, since processors do not support processing for mixed batch (contains data w/ and w/o visual inputs)
     for text, visual_input in zip(texts, visual_inputs):
         if not visual_input or (type(visual_input)==list and any(i is None for i in visual_input)):
@@ -406,6 +403,10 @@ def Qwen3_5_process_fn(model_inputs: dict, processor: AutoProcessor, max_length=
                 # in case of empty string, only BOS is included
                 input_id = [input_id]
             input_ids.append(input_id)
+            mm_ids = inputs.get("mm_token_type_ids")
+            per_example_mm_token_type_ids.append(
+                mm_ids.squeeze().tolist() if mm_ids is not None else [0] * len(input_id)
+            )
             pixel_values.append(None)
             image_grid_thw.append(None)
             pixel_values_videos.append(None)
@@ -421,10 +422,12 @@ def Qwen3_5_process_fn(model_inputs: dict, processor: AutoProcessor, max_length=
                         if image.size[0] < 28 or image.size[1] < 28:
                             image = image.resize((56, 56))
                             visual_input[iid] = image
-                    inputs = processor(text=[text], images=visual_input, return_tensors="np", max_length=max_length, truncation=(max_length is not None), input_data_format=ChannelDimension.LAST)
+                    # Qwen3VL uses a Torchvision backend that handles PIL images natively (CHW);
+                    # passing input_data_format=ChannelDimension.LAST causes a channel-dim mismatch.
+                    inputs = processor(text=[text], images=visual_input, return_tensors="np", max_length=max_length, truncation=(max_length is not None))
                 elif vlm_video_token in text:
                     # TODO: check text/video data validity
-                    inputs = processor(text=[text], videos=[visual_input], return_tensors="np", max_length=max_length, truncation=(max_length is not None), input_data_format=ChannelDimension.LAST)
+                    inputs = processor(text=[text], videos=[visual_input], return_tensors="np", max_length=max_length, truncation=(max_length is not None))
                 else:
                     raise NotImplementedError(f"No visual token found ({vlm_image_token} or {vlm_video_token}) in the text: {text}")
             except Exception as e:
@@ -432,6 +435,10 @@ def Qwen3_5_process_fn(model_inputs: dict, processor: AutoProcessor, max_length=
                     print(i.filename)
                 raise e
             input_ids.append(inputs["input_ids"].squeeze().tolist())
+            mm_ids = inputs.get("mm_token_type_ids")
+            per_example_mm_token_type_ids.append(
+                mm_ids.squeeze().tolist() if mm_ids is not None else [0] * len(inputs["input_ids"].squeeze().tolist())
+            )
             if 'pixel_values' in inputs:
                 pixel_values.append(inputs['pixel_values'])
                 image_grid_thw.append(inputs['image_grid_thw'])
@@ -446,14 +453,16 @@ def Qwen3_5_process_fn(model_inputs: dict, processor: AutoProcessor, max_length=
     # 2. padding inputs
     batch_encoding = processor.tokenizer.pad({'input_ids': input_ids}, return_tensors="pt")
     input_ids, attention_mask = batch_encoding['input_ids'], batch_encoding['attention_mask']
-    # manually enforce long type due to:
-    # (1) [rank7]: RuntimeError: Expected tensor for argument #1 'indices' to have one of the following scalar types: Long, Int; but got torch.cuda.FloatTensor instead (while checking arguments for embedding)
-    # (2) [rank7]:   File "/fsx/home/ruimeng/project/VLM2Vec/src/model.py", line 45, in _pooling
-    #     [rank7]:     reps = last_hidden_state[
-    #     [rank7]: IndexError: tensors used as indices must be long, int, byte or bool tensors
+
+    # pad mm_token_type_ids to match the padded sequence length (pad with 0 = text, consistent with attention_mask masking)
+    mm_token_type_ids = torch.zeros_like(input_ids)
+    for b, ids in enumerate(per_example_mm_token_type_ids):
+        mm_token_type_ids[b, attention_mask[b].bool()] = torch.as_tensor(ids, dtype=input_ids.dtype)
+
     inputs = {
         'input_ids': input_ids.long(),
-        'attention_mask': attention_mask.long(), 
+        'attention_mask': attention_mask.long(),
+        'mm_token_type_ids': mm_token_type_ids,
         'texts': texts,
         'images': visual_inputs,
     }

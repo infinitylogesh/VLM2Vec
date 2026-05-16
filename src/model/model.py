@@ -97,6 +97,25 @@ class MMEBModel(nn.Module):
             hidden_states = hidden_states.hidden_states[-1]
             pooled_output = self._pooling(hidden_states, input['attention_mask'])
             return pooled_output
+        elif getattr(self, "model_backbone", None) == QWEN3_5:
+                device = input['input_ids'].device
+                def _cat_visual(values):
+                    valid = [torch.as_tensor(v) for v in values if v is not None]
+                    return torch.cat(valid, dim=0).to(device) if valid else None
+                
+                encoder_input = {
+                    'input_ids': input['input_ids'],
+                    'attention_mask': input['attention_mask'],
+                    'mm_token_type_ids': input['mm_token_type_ids'],
+                    'pixel_values': _cat_visual(input['pixel_values']),
+                    'image_grid_thw': _cat_visual(input['image_grid_thw']),
+                    'pixel_values_videos': _cat_visual(input['pixel_values_videos']),
+                    'video_grid_thw': _cat_visual(input['video_grid_thw']),
+                }
+                hidden_states = self.encoder(**encoder_input, return_dict=True, output_hidden_states=True,logits_to_keep=1)
+                hidden_states = hidden_states.hidden_states[-1]
+                pooled_output = self._pooling(hidden_states, input['attention_mask'])
+                return pooled_output
         else:
             hidden_states = self.encoder(**input, return_dict=True, output_hidden_states=True)
             hidden_states = hidden_states.hidden_states[-1]
@@ -147,24 +166,19 @@ class MMEBModel(nn.Module):
                 torch_dtype=torch.bfloat16,
                 low_cpu_mem_usage=True,
             )
-        elif model_backbone in [QWEN2_VL, QWEN2_5_VL]:
+        elif model_backbone in [QWEN2_VL, QWEN2_5_VL, QWEN3_5]:
             config._attn_implementation = "flash_attention_2"
+            config.vision_config._attn_implementation = "flash_attention_2"
             config.padding_side = "left"
             config.use_cache = False
+            # for qwen3.5 text config
+            if hasattr(config, 'text_config'):
+                config.text_config.use_cache = False
             base_model = backbone2model[model_backbone].from_pretrained(
                 model_args.model_name,
                 config=config,
                 torch_dtype=torch.bfloat16,
                 low_cpu_mem_usage=True,
-            )
-        # Qwen3.5 debug path should not require flash-attn to be installed.
-        elif model_backbone == QWEN3_5:
-            # TODO: Switch to flash-attn once it is supported.
-            config._attn_implementation = "flash_attention_2" # "eager" 
-            config.padding_side = "left"
-            config.use_cache = False
-            base_model = backbone2model[model_backbone].from_pretrained(
-                model_args.model_name, config=config, torch_dtype=torch.bfloat16, low_cpu_mem_usage=True
             )
         elif model_backbone in [QWEN2_VL_TOKENSELECTION, QWEN2_5_VL_TOKENSELECTION]:
             config._attn_implementation = "flash_attention_2"
@@ -230,7 +244,7 @@ class MMEBModel(nn.Module):
             model_backbone = get_backbone_name(hf_config=config, model_type=model_args.model_type)
             setattr(model_args, 'model_backbone', model_backbone)
         print_master(f'Loading backbone [{model_args.model_backbone}] from {model_name_or_path}')
-        if model_args.model_backbone in {LLAVA_NEXT, QWEN2_VL, QWEN2_5_VL, QWEN2_VL_TOKENSELECTION, QWEN2_5_VL_TOKENSELECTION, E5_V}:
+        if model_args.model_backbone in {LLAVA_NEXT, QWEN2_VL, QWEN2_5_VL, QWEN3_5, QWEN2_VL_TOKENSELECTION, QWEN2_5_VL_TOKENSELECTION, E5_V}:
             config = AutoConfig.from_pretrained(model_args.model_name, trust_remote_code=True)
             config._attn_implementation = "flash_attention_2"
             config.vision_config._attn_implementation = "flash_attention_2"
