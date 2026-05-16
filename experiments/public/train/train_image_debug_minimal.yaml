@@ -2,8 +2,8 @@ HatefulMemes-debug:
     dataset_parser: mmeb
     dataset_name: debug/HatefulMemes
     subset_name: HatefulMemes
-    dataset_path: vlm2vec_debug/MMEB-train/HatefulMemes/original-debug.parquet
+    dataset_path: data/vlm2vec_train/MMEB-train/HatefulMemes/train-00000-of-00001.parquet
     dataset_split: train
-    image_dir: vlm2vec_debug/MMEB-train
-    num_sample_per_subset: 8
+    image_dir: data/vlm2vec_train/MMEB-train
+    # num_sample_per_subset: 8
     weight: 1
