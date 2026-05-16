@@ -11,6 +11,9 @@ archive/
 VLM2Vec-pro.iml
 VLM2Vec.iml
 workspace.xml
+outputs/
+data/
+train_video_and_instruction/
 
 # Compiled source #
 ###################

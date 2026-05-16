@@ -1,8 +1,8 @@
 video_caption_300k:
     dataset_parser: llavahound_caption
     dataset_name: video_caption_300k
-    dataset_path: vlm2vec_train/train_video_and_instruction/video_instruction/train/sft/video_caption_300k.jsonl
-    video_frame_basedir: vlm2vec_train/train_video_and_instruction/train_300k
+    dataset_path: data/vlm2vec_train/train_video_and_instruction/video_instruction/train/sft/video_caption_300k.jsonl
+    video_frame_basedir: data/vlm2vec_train/train_video_and_instruction/train_300k
     weight: 5
     num_rows: 300_000
     num_frames: 8
@@ -10,8 +10,8 @@ video_caption_300k:
 video_caption_300k-video:
     dataset_parser: llavahound_caption
     dataset_name: video_caption_300k
-    dataset_path: vlm2vec_train/train_video_and_instruction/video_instruction/train/sft/video_caption_300k.jsonl
-    video_frame_basedir: vlm2vec_train/train_video_and_instruction/train_300k
+    dataset_path: data/vlm2vec_train/train_video_and_instruction/video_instruction/train/sft/video_caption_300k.jsonl
+    video_frame_basedir: data/vlm2vec_train/train_video_and_instruction/train_300k
     weight: 5
     num_rows: 300_000
     num_frames: 8
@@ -19,8 +19,8 @@ video_caption_300k-video:
 video_qa_240k:
     dataset_parser: llavahound_qa
     dataset_name: video_qa_240k
-    dataset_path: vlm2vec_train/train_video_and_instruction/video_instruction/train/sft/video_240k_caption_15k.jsonl
-    video_frame_basedir: vlm2vec_train/train_video_and_instruction/train_300k
+    dataset_path: data/vlm2vec_train/train_video_and_instruction/video_instruction/train/sft/video_240k_caption_15k.jsonl
+    video_frame_basedir: data/vlm2vec_train/train_video_and_instruction/train_300k
     weight: 5
     num_rows: 240_000
     num_frames: 8
