@@ -197,6 +197,11 @@ def load_processor(model_args, data_args=None):
             model_args.processor_name if model_args.processor_name else model_args.model_name,
             trust_remote_code=True,
         )
+        if data_args is not None:
+            processor.image_processor.size = {
+                "shortest_edge": data_args.resize_min_pixels,
+                "longest_edge": data_args.resize_max_pixels,
+            }
     else:
         from transformers import AutoProcessor
         processor = AutoProcessor.from_pretrained(
