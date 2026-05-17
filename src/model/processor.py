@@ -401,7 +401,11 @@ def Qwen3_5_process_fn(model_inputs: dict, processor: AutoProcessor, max_length=
     # 1. iterate each pair and process, since processors do not support processing for mixed batch (contains data w/ and w/o visual inputs)
     for text, visual_input in zip(texts, visual_inputs):
         if not visual_input or (type(visual_input)==list and any(i is None for i in visual_input)):
-            # if text inputs only (all images must be valid)
+            # text-only sample, or a sample whose image(s) failed to load.
+            # strip stale visual placeholders so the token count matches the (absent) visual features.
+            if vlm_image_token in text or vlm_video_token in text:
+                print(f"Warning: text-only sample contains visual placeholders, ignoring visual features.")
+            text = text.replace(vlm_image_token, '').replace(vlm_video_token, '')
             inputs = processor(text=[text], images=None, return_tensors="np", max_length=max_length, truncation=True)
             input_id = inputs["input_ids"].squeeze().tolist()
             if isinstance(input_id, int):
