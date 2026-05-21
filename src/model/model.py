@@ -106,12 +106,21 @@ class MMEBModel(nn.Module):
                 encoder_input = {
                     'input_ids': input['input_ids'],
                     'attention_mask': input['attention_mask'],
-                    'mm_token_type_ids': input['mm_token_type_ids'],
-                    'pixel_values': _cat_visual(input['pixel_values']),
-                    'image_grid_thw': _cat_visual(input['image_grid_thw']),
-                    'pixel_values_videos': _cat_visual(input['pixel_values_videos']),
-                    'video_grid_thw': _cat_visual(input['video_grid_thw']),
+                    'mm_token_type_ids': input['mm_token_type_ids']
                 }
+
+                if "pixel_values" in input:
+                    encoder_input["pixel_values"] = _cat_visual(input['pixel_values'])
+
+                if "image_grid_thw" in input:
+                    encoder_input["image_grid_thw"] = _cat_visual(input['image_grid_thw'])
+
+                if "pixel_values_videos" in input:
+                    encoder_input["pixel_values_videos"] = _cat_visual(input['pixel_values_videos'])
+
+                if "video_grid_thw" in input:
+                    encoder_input["video_grid_thw"] = _cat_visual(input['video_grid_thw'])
+
                 hidden_states = self.encoder(**encoder_input, return_dict=True, output_hidden_states=True,logits_to_keep=1)
                 hidden_states = hidden_states.hidden_states[-1]
                 pooled_output = self._pooling(hidden_states, input['attention_mask'])
