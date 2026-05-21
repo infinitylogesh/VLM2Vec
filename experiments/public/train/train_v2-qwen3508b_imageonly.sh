@@ -14,11 +14,12 @@ export WANDB_PROJECT=vlm2vec-debug
 export WANDB_API_KEY=
 export HUGGING_FACE_HUB_TOKEN=
 export WANDB_PROJECT=vlm2vec-debug
-export WANDB_RUN_GROUP=Qwen3.5-08b-imageonly
-export EXP_NAME=Qwen3.5-08b-imageonly
+export WANDB_RUN_GROUP=Qwen3.5-08b-imageonly-h100
+export EXP_NAME=Qwen3.5-08b-imageonly-h100
 
+export WORKDIR=/workspace/VLM2Vec
 export WANDB_NAME=$EXP_NAME
-export EXP_DIR=.../$EXP_NAME
+export EXP_DIR="${WORKDIR}/outputs/${EXP_NAME}"
 export WANDB_DIR=$EXP_DIR
 echo $EXP_DIR
 
@@ -47,11 +48,16 @@ cmd="python3 train.py \
   --learning_rate 5e-5 \
   --max_steps 5000 \
   --warmup_steps 100 \
-  --save_steps 50 \
+  --save_steps 250 \
   --logging_steps 1 \
   --remove_unused_columns False \
   --gradient_accumulation_steps 1 \
+  --torch_compile True \
+  --torch_compile_mode reduce-overhead \
   --resume_from auto \
+  --dataloader_persistent_workers True \
+  --dataloader_prefetch_factor 4 \
+  --dataloader_num_workers 16 \
   --report_to wandb \
   2>&1 | tee $EXP_DIR/train.log"
 
