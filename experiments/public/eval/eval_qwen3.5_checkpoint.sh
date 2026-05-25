@@ -14,24 +14,28 @@ cd /workspace/VLM2Vec
 # ==============================================================================
 # Configuration
 # ==============================================================================
-BASE_MODEL="Qwen/Qwen3.5-0.8b"
+BASE_MODEL=$1
+
+if [ -z "$BASE_MODEL" ]; then
+  echo "Usage: $0 <BASE_MODEL>"
+  echo "Example: $0 infinitylogesh/Qwen3-0.8b-image-embeddings-merged-4750"
+  exit 1
+fi" 
 
 # List of checkpoint paths to evaluate one by one
 CHECKPOINTS=(
-  "/workspace/VLM2Vec/outputs/checkpoint-4000"
-  "/workspace/VLM2Vec/outputs/checkpoint-3000"
-  "/workspace/VLM2Vec/outputs/checkpoint-2000"
-  "/workspace/VLM2Vec/outputs/checkpoint-1000"
-  "/workspace/VLM2Vec/outputs/checkpoint-500"
-  # Add more checkpoints here, e.g.:
-  # "/workspace/VLM2Vec/outputs/checkpoint-3750"
+  "/workspace/VLM2Vec/outputs/checkpoint-250"
+  "/workspace/VLM2Vec/outputs/checkpoint-750"
+  "/workspace/VLM2Vec/outputs/checkpoint-1250"
+  "/workspace/VLM2Vec/outputs/checkpoint-1750"
+  "/workspace/VLM2Vec/outputs/checkpoint-2250"
 )
 
-DATA_BASEDIR="data/data/vlm2vec_eval"
+DATA_BASEDIR="data/vlm2vec_eval"
 OUTPUT_BASEDIR="outputs/evaluation"
 BATCH_SIZE=16
 
-MODALITIES=("image" "video" "visdoc") # add "video" "visdoc" as needed
+MODALITIES=("image" "video")
 
 # ==============================================================================
 # Checkpoint loop
@@ -56,9 +60,10 @@ for CHECKPOINT_PATH in "${CHECKPOINTS[@]}"; do
 
     mkdir -p "$OUTPUT_PATH"
 
-    python eval.py \
+    uv run python eval.py \
       --model_name "$BASE_MODEL" \
       --checkpoint_path "$CHECKPOINT_PATH" \
+      --lora True \
       --pooling eos \
       --normalize True \
       --per_device_eval_batch_size $BATCH_SIZE \
