@@ -20,7 +20,7 @@ if [ -z "$BASE_MODEL" ]; then
   echo "Usage: $0 <BASE_MODEL>"
   echo "Example: $0 infinitylogesh/Qwen3-0.8b-image-embeddings-merged-4750"
   exit 1
-fi" 
+fi
 
 # List of checkpoint paths to evaluate one by one
 CHECKPOINTS=(
@@ -35,7 +35,7 @@ DATA_BASEDIR="data/vlm2vec_eval"
 OUTPUT_BASEDIR="outputs/evaluation"
 BATCH_SIZE=16
 
-MODALITIES=("image" "video")
+MODALITIES=("image" "video" "visdoc")
 
 # ==============================================================================
 # Checkpoint loop

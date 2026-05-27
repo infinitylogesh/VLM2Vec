@@ -3,6 +3,8 @@ import logging
 import json
 import random
 import time
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 import numpy as np
 import os
@@ -241,7 +243,6 @@ def main():
                 import traceback
                 traceback.print_exc()
                 print_master(e)
-                raise e
                 continue
 
         # --- 1. Compute Query Embeddings ---

@@ -43,19 +43,96 @@ EXPERIMENTS = [
 
 EXPERIMENTS = [
     {
-        "path": ...,
+        "path": "outputs/evaluation/checkpoint-250",
         "metadata": {
-            "model_name": ...,
-            "model_backbone": ...,
-            "model_size": ...,
-            "embedding_dimension": ...,
-            "max_length_tokens": ...,
-            "model_release_date": ...,
+            "model_name": "Qwen3-0.8B-VLM2Vec-checkpoint-250",
+            "model_backbone": "Qwen3-0.8B",
+            "model_size": "0.8B parameters",
+            "embedding_dimension": 1024,
+            "max_length_tokens": None,
+            "model_release_date": "2026-05-26",
             "data_source": "Self-Reported",
-            "url": ...
+            "url": "infinitylogesh/Qwen3-0.8b-image-embeddings-merged-4750"
         }
     },
-    ...
+    {
+        "path": "outputs/evaluation/checkpoint-750",
+        "metadata": {
+            "model_name": "Qwen3-0.8B-VLM2Vec-checkpoint-750",
+            "model_backbone": "Qwen3-0.8B",
+            "model_size": "0.8B parameters",
+            "embedding_dimension": 1024,
+            "max_length_tokens": None,
+            "model_release_date": "2026-05-26",
+            "data_source": "Self-Reported",
+            "url": "infinitylogesh/Qwen3-0.8b-image-embeddings-merged-4750"
+        }
+    },
+    {
+        "path": "outputs/evaluation/checkpoint-1250",
+        "metadata": {
+            "model_name": "Qwen3-0.8B-VLM2Vec-checkpoint-1250",
+            "model_backbone": "Qwen3-0.8B",
+            "model_size": "0.8B parameters",
+            "embedding_dimension": 1024,
+            "max_length_tokens": None,
+            "model_release_date": "2026-05-26",
+            "data_source": "Self-Reported",
+            "url": "infinitylogesh/Qwen3-0.8b-image-embeddings-merged-4750"
+        }
+    },
+    {
+        "path": "outputs/evaluation/checkpoint-1750",
+        "metadata": {
+            "model_name": "Qwen3-0.8B-VLM2Vec-checkpoint-1750",
+            "model_backbone": "Qwen3-0.8B",
+            "model_size": "0.8B parameters",
+            "embedding_dimension": 1024,
+            "max_length_tokens": None,
+            "model_release_date": "2026-05-26",
+            "data_source": "Self-Reported",
+            "url": "infinitylogesh/Qwen3-0.8b-image-embeddings-merged-4750"
+        }
+    },
+    {
+        "path": "outputs/evaluation/checkpoint-2250",
+        "metadata": {
+            "model_name": "Qwen3-0.8B-VLM2Vec-checkpoint-2250",
+            "model_backbone": "Qwen3-0.8B",
+            "model_size": "0.8B parameters",
+            "embedding_dimension": 1024,
+            "max_length_tokens": None,
+            "model_release_date": "2026-05-26",
+            "data_source": "Self-Reported",
+            "url": "infinitylogesh/Qwen3-0.8b-image-embeddings-merged-4750"
+        }
+    },
+    {
+        "path": "outputs/evaluation/jina-v5-omni-nano",
+        "metadata": {
+            "model_name": "jina-embeddings-v5-omni-nano",
+            "model_backbone": "Jina v5-omni-nano",
+            "model_size": "nano",
+            "embedding_dimension": 1024,
+            "max_length_tokens": None,
+            "model_release_date": "2025-01-01",
+            "data_source": "Self-Reported",
+            "url": "jinaai/jina-embeddings-v5-omni-nano"
+        }
+    },
+    {
+        "path": "outputs/evaluation/jina-v5-omni-small",
+        "metadata": {
+            "model_name": "jina-embeddings-v5-omni-small",
+            "model_backbone": "Jina v5-omni-small",
+            "model_size": "small",
+            "embedding_dimension": 1024,
+            "max_length_tokens": None,
+            "model_release_date": "2025-01-01",
+            "data_source": "Self-Reported",
+            "url": "jinaai/jina-embeddings-v5-omni-small"
+        }
+    },
 ]
 
 
@@ -104,7 +181,9 @@ for experiment in EXPERIMENTS:
 
     for modality in modalities:
         current_experiment_scores[modality] = {}
-        modality_specific_result_dir = os.path.join(base_path, modality)
+        # Support both flat layout (all score files in base_path) and
+        # the canonical layout (base_path/modality/).
+        modality_specific_result_dir = base_path if os.path.isdir(base_path) and not os.path.isdir(os.path.join(base_path, modality)) else os.path.join(base_path, modality)
 
         for dataset_name in modality2dataset.get(modality, []):
             current_experiment_scores[modality][dataset_name] = "FILE_N/A" # Initialize
