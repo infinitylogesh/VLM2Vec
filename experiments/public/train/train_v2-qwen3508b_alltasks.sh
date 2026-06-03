@@ -21,7 +21,7 @@ export WORKDIR=/workspace/VLM2Vec
 export WANDB_NAME=$EXP_NAME
 export EXP_DIR="${WORKDIR}/outputs/${EXP_NAME}"
 export WANDB_DIR=$EXP_DIR
-MODEL="infinitylogesh/Qwen3-0.8b-image-embeddings-merged-4750"
+MODEL="Qwen/Qwen3.5-2B"
 echo $EXP_DIR
 
 mkdir -p $EXP_DIR/wandb
@@ -40,12 +40,12 @@ cmd="CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2 --master_port=2207 --m
   --run_name $EXP_NAME \
   --output_dir $EXP_DIR \
   --grad_cache True \
-  --per_device_train_batch_size 192 \
+  --per_device_train_batch_size 128 \
   --gc_q_chunk_size 8 \
   --gc_p_chunk_size 8 \
   --interleave_batch_size 64 \
   --lr_scheduler_type linear \
-  --learning_rate 2e-5 \
+  --learning_rate 5e-5 \
   --max_steps 5000 \
   --warmup_steps 100 \
   --save_steps 250 \
@@ -57,6 +57,7 @@ cmd="CUDA_VISIBLE_DEVICES=0,1 torchrun --nproc_per_node=2 --master_port=2207 --m
   --dataloader_prefetch_factor 2 \
   --dataloader_num_workers 4 \
   --ddp_find_unused_parameters False \
+  --max_grad_norm 1.0 \
   --report_to wandb \
   2>&1 | tee $EXP_DIR/train.log"
 
